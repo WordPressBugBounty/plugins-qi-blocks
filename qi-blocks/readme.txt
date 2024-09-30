@@ -230,6 +230,9 @@ Yes, you can. You can start off using the free version of the plugin, and then u
 = Do you offer refunds? =
 Yes, we do. Qi Blocks are covered by our 14-day money-back policy. This means that, within fourteen days of purchasing a license, you can change your mind and request a refund.
 
+= How can I report security bugs? =
+You can report security bugs through the Patchstack Vulnerability Disclosure Program. The Patchstack team help validate, triage and handle any security vulnerabilities. [Report a security vulnerability.](https://patchstack.com/database/vdp/qi-blocks)
+
 == Installation ==
 
 = Minimum Requirements =
