@@ -218,6 +218,9 @@ if ( ! function_exists( 'qi_blocks_get_block_list_template_part' ) ) {
 	 */
 	function qi_blocks_get_block_list_template_part( $module, $template, $slug = '', $params = array() ) {
 		$temp_in_variation = false;
+		$module            = qi_blocks_sanitize_module_template_part( $module );
+		$template          = qi_blocks_sanitize_module_template_part( $template );
+		$slug              = qi_blocks_sanitize_module_template_part( $slug );
 
 		/* In order to use this way of templating, option for list item layout must be called layoyt */
 		if ( isset( $params['layout'] ) ) {

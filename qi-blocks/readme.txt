@@ -2,9 +2,9 @@
 Contributors: qodeinteractive
 Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 5.8
-Tested up to: 6.6
+Tested up to: 6.7
 Requires PHP: 7.2
-Stable tag: 1.3.3
+Stable tag: 1.3.4
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -268,9 +268,12 @@ Feel free to try out some of our other products:
 
 <a href="https://wordpress.org/themes/qi/">Qi Theme</a>
 <a href="https://wordpress.org/plugins/qi-addons-for-elementor/">Qi Addons for Elementor</a>
-<a href="https://wordpress.org/plugins/qode-wishlist-for-woocommerce/">QODE Wishlist for WooCommerce</a>
+<a href="https://wordpress.org/plugins/qi-blocks/">Qi Blocks for Gutenberg</a>
 <a href="https://wordpress.org/plugins/qode-quick-view-for-woocommerce/">QODE Quick View for WooCommerce</a>
 <a href="https://wordpress.org/plugins/qode-variation-swatches-for-woocommerce/">QODE Variation Swatches for WooCommerce</a>
+<a href="https://wordpress.org/plugins/qode-compare-for-woocommerce/">QODE Compare for WooCommerce</a>
+<a href="https://wordpress.org/plugins/qode-product-extra-options-for-woocommerce/">QODE Product Extra Options for WooCommerce</a>
+<a href="https://wordpress.org/plugins/qode-optimizer/">QODE Optimizer</a>
 
 == Screenshots ==
 
@@ -288,6 +291,12 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.3.4 - 27-11-2024 =
+- Added WordPress 6.7 support
+- Updated Google fonts list
+- Updated languages file
+- Fixed minor bugs
 
 = 1.3.3 - 24-09-2024 =
 - Fixed potential Cross Site Scripting (XSS) vulnerability for Blog List block

@@ -42,6 +42,9 @@
     "family": "Afacad"
   },
   {
+    "family": "Afacad Flux"
+  },
+  {
     "family": "Agbalumo"
   },
   {
@@ -1146,6 +1149,9 @@
     "family": "DotGothic16"
   },
   {
+    "family": "Doto"
+  },
+  {
     "family": "Dr Sugiyama"
   },
   {
@@ -1176,7 +1182,19 @@
     "family": "Eczar"
   },
   {
+    "family": "Edu AU VIC WA NT Arrows"
+  },
+  {
+    "family": "Edu AU VIC WA NT Dots"
+  },
+  {
+    "family": "Edu AU VIC WA NT Guides"
+  },
+  {
     "family": "Edu AU VIC WA NT Hand"
+  },
+  {
+    "family": "Edu AU VIC WA NT Pre"
   },
   {
     "family": "Edu NSW ACT Foundation"
@@ -1270,6 +1288,9 @@
   },
   {
     "family": "Explora"
+  },
+  {
+    "family": "Faculty Glyphic"
   },
   {
     "family": "Fahkwang"
@@ -1422,6 +1443,12 @@
     "family": "Fuggles"
   },
   {
+    "family": "Funnel Display"
+  },
+  {
+    "family": "Funnel Sans"
+  },
+  {
     "family": "Fustat"
   },
   {
@@ -1471,6 +1498,12 @@
   },
   {
     "family": "Gayathri"
+  },
+  {
+    "family": "Geist"
+  },
+  {
+    "family": "Geist Mono"
   },
   {
     "family": "Gelasio"
@@ -1719,7 +1752,13 @@
     "family": "Honk"
   },
   {
+    "family": "Host Grotesk"
+  },
+  {
     "family": "Hubballi"
+  },
+  {
+    "family": "Hubot Sans"
   },
   {
     "family": "Hurricane"
@@ -2026,6 +2065,12 @@
   },
   {
     "family": "Karla"
+  },
+  {
+    "family": "Karla Tamil Inclined"
+  },
+  {
+    "family": "Karla Tamil Upright"
   },
   {
     "family": "Karma"
@@ -2623,6 +2668,9 @@
   },
   {
     "family": "Molle"
+  },
+  {
+    "family": "Mona Sans"
   },
   {
     "family": "Monda"
@@ -3612,6 +3660,9 @@
     "family": "Parisienne"
   },
   {
+    "family": "Parkinsans"
+  },
+  {
     "family": "Passero One"
   },
   {
@@ -3661,6 +3712,9 @@
   },
   {
     "family": "Petrona"
+  },
+  {
+    "family": "Phetsarath"
   },
   {
     "family": "Philosopher"
@@ -3883,6 +3937,9 @@
   },
   {
     "family": "Pompiere"
+  },
+  {
+    "family": "Ponnala"
   },
   {
     "family": "Pontano Sans"
@@ -4494,6 +4551,9 @@
     "family": "Sixtyfour"
   },
   {
+    "family": "Sixtyfour Convergence"
+  },
+  {
     "family": "Skranji"
   },
   {
@@ -4570,6 +4630,9 @@
   },
   {
     "family": "Sorts Mill Goudy"
+  },
+  {
+    "family": "Sour Gummy"
   },
   {
     "family": "Source Code Pro"
