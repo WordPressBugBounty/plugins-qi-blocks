@@ -2,9 +2,9 @@
 Contributors: qodeinteractive
 Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 5.8
-Tested up to: 6.8
+Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.4.3
+Stable tag: 1.4.8
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -291,6 +291,23 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.4.8 - 29-01-2026 =
+- Improved block options style rendering
+
+= 1.4.7 - 23-12-2025 =
+- Optimized saving of block options
+
+= 1.4.6 - 14-11-2025 =
+- Fixed - Fatal error: Uncaught Error: Cannot use object of type stdClass as array
+
+= 1.4.5 - 10-11-2025 =
+- Fixed the undefined filter function preventing block options from being saved
+
+= 1.4.4 - 31-10-2025 =
+- Improved saving block options
+- Improved resize_image_callback() to prevent unauthorized media resizing
+- Fixed predefined columns responsive for Timeline block
 
 = 1.4.3 - 18-08-2025 =
 - Fixed block styles on the front-end
