@@ -4,7 +4,7 @@ Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 5.8
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.4.8
+Stable tag: 1.4.9
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -291,6 +291,10 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.4.9 - 24-03-2026 =
+- Fixed the "Function WP_Scripts::add was called..." notice
+- Fixed block style options not rendering inside the Customizer -> Widgets panel
 
 = 1.4.8 - 29-01-2026 =
 - Improved block options style rendering

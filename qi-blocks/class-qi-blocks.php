@@ -5,7 +5,7 @@ Description: A collection of blocks for the Gutenberg block editor, developed by
 Author: Qode Interactive
 Author URI: https://qodeinteractive.com/
 Plugin URI: https://qodeinteractive.com/qi-blocks-for-gutenberg/
-Version: 1.4.8
+Version: 1.4.9
 Requires at least: 5.8
 Requires PHP: 7.4
 Text Domain: qi-blocks
@@ -45,6 +45,7 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 				add_filter( 'wp_check_filetype_and_ext', array( $this, 'check_svg_upload' ), 10, 4 );
 
 				// Enqueue plugin's assets.
+				add_action( 'init', array( $this, 'register_assets' ) );
 				add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 				add_action( 'wp_enqueue_scripts', array( $this, 'localize_js_scripts' ) );
 
@@ -161,19 +162,31 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 			return $checked;
 		}
 
+		public function register_assets() {
+
+			// Register CSS grid styles.
+			wp_register_style( 'qi-blocks-grid', QI_BLOCKS_ASSETS_URL_PATH . '/dist/grid.css', array(), QI_BLOCKS_VERSION );
+
+			// Register CSS styles.
+			wp_register_style( 'qi-blocks-main', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main.css', array(), QI_BLOCKS_VERSION );
+
+			// Register JS scripts.
+			wp_register_script( 'qi-blocks-main', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main.js', array( 'jquery' ), QI_BLOCKS_VERSION, true );
+		}
+
 		public function enqueue_assets() {
 
 			// Enqueue plugin's 3rd party scripts.
 			$this->enqueue_3rd_party_assets();
 
 			// Enqueue CSS grid styles.
-			wp_enqueue_style( 'qi-blocks-grid', QI_BLOCKS_ASSETS_URL_PATH . '/dist/grid.css', array(), QI_BLOCKS_VERSION );
+			wp_enqueue_style( 'qi-blocks-grid' );
 
 			// Enqueue CSS styles.
-			wp_enqueue_style( 'qi-blocks-main', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main.css', array(), QI_BLOCKS_VERSION );
+			wp_enqueue_style( 'qi-blocks-main' );
 
 			// Enqueue JS scripts.
-			wp_enqueue_script( 'qi-blocks-main', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main.js', array( 'jquery' ), QI_BLOCKS_VERSION, true );
+			wp_enqueue_script( 'qi-blocks-main' );
 		}
 
 		public function register_editor_assets() {
