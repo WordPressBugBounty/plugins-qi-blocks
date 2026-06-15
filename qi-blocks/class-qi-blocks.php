@@ -5,8 +5,8 @@ Description: A collection of blocks for the Gutenberg block editor, developed by
 Author: Qode Interactive
 Author URI: https://qodeinteractive.com/
 Plugin URI: https://qodeinteractive.com/qi-blocks-for-gutenberg/
-Version: 1.4.9
-Requires at least: 5.8
+Version: 1.5
+Requires at least: 6.3
 Requires PHP: 7.4
 Text Domain: qi-blocks
 */
@@ -48,6 +48,9 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 				add_action( 'init', array( $this, 'register_assets' ) );
 				add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 				add_action( 'wp_enqueue_scripts', array( $this, 'localize_js_scripts' ) );
+
+				// Loads core block assets only when they are rendered on the page - WordPress 5.8.
+				add_filter( 'should_load_separate_core_block_assets', '__return_true' );
 
 				// Register plugin's editor assets.
 				add_action( 'init', array( $this, 'register_editor_assets' ) );
@@ -175,9 +178,23 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 		}
 
 		public function enqueue_assets() {
+			if ( ! function_exists( 'qi_blocks_should_load_frontend_assets' ) || ! qi_blocks_should_load_frontend_assets() ) {
+				return;
+			}
 
-			// Enqueue plugin's 3rd party scripts.
+			$this->register_3rd_party_assets();
 			$this->enqueue_3rd_party_assets();
+
+			if ( function_exists( 'qi_blocks_page_needs_swiper' ) && qi_blocks_page_needs_swiper() ) {
+				wp_enqueue_style( 'swiper' );
+				wp_enqueue_script( 'swiper' );
+
+				$wp_scripts = wp_scripts();
+
+				if ( isset( $wp_scripts->registered['qi-blocks-main'] ) && ! in_array( 'swiper', $wp_scripts->registered['qi-blocks-main']->deps, true ) ) {
+					$wp_scripts->registered['qi-blocks-main']->deps[] = 'swiper';
+				}
+			}
 
 			// Enqueue CSS grid styles.
 			wp_enqueue_style( 'qi-blocks-grid' );
@@ -190,9 +207,7 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 		}
 
 		public function register_editor_assets() {
-
-			// Enqueue plugin's 3rd party scripts.
-			$this->enqueue_3rd_party_assets();
+			$this->register_3rd_party_assets();
 
 			// Register CSS grid styles.
 			wp_register_style( 'qi-blocks-grid-editor', QI_BLOCKS_ASSETS_URL_PATH . '/dist/grid-editor.css', array( 'qi-blocks-main' ), QI_BLOCKS_VERSION );
@@ -203,6 +218,7 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 		}
 
 		public function enqueue_editor_assets() {
+			$this->enqueue_3rd_party_assets();
 
 			// Enqueue CSS grid styles.
 			wp_enqueue_style( 'qi-blocks-grid-editor' );
@@ -237,17 +253,22 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 			}
 		}
 
-		public function enqueue_3rd_party_assets() {
-
+		public function register_3rd_party_assets() {
 			// Hook to include additional 3rd party scripts.
 			do_action( 'qi_blocks_action_additional_3rd_party_scripts' );
 
-			// Register and enqueue animate styles.
-			wp_register_style( 'animate', QI_BLOCKS_ASSETS_URL_PATH . '/css/plugins/animate/animate.min.css', array(), '4.1.1' );
-			wp_enqueue_style( 'animate' );
+			if ( ! wp_style_is( 'animate', 'registered' ) ) {
+				wp_register_style( 'animate', QI_BLOCKS_ASSETS_URL_PATH . '/css/plugins/animate/animate.min.css', array(), '4.1.1' );
+			}
 
-			// Register lightbox scripts.
-			wp_register_script( 'fslightbox', QI_BLOCKS_ASSETS_URL_PATH . '/js/plugins/fslightbox/fslightbox.min.js', array( 'jquery' ), '3.4.1', true );
+			if ( ! wp_script_is( 'fslightbox', 'registered' ) ) {
+				wp_register_script( 'fslightbox', QI_BLOCKS_ASSETS_URL_PATH . '/js/plugins/fslightbox/fslightbox.min.js', array( 'jquery' ), '3.4.1', true );
+			}
+		}
+
+		public function enqueue_3rd_party_assets() {
+			$this->register_3rd_party_assets();
+			wp_enqueue_style( 'animate' );
 		}
 
 		public function set_block_style_dependency( $style_dependency ) {
@@ -263,6 +284,10 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 		}
 
 		public function localize_js_scripts() {
+			if ( ! wp_script_is( 'qi-blocks-main', 'enqueued' ) ) {
+				return;
+			}
+
 			$global = apply_filters(
 				'qi_blocks_filter_localize_main_js',
 				array(

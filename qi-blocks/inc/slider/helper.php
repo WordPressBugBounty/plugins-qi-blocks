@@ -42,6 +42,23 @@ if ( ! function_exists( 'qi_blocks_set_slider_style_as_block_style_dependency' )
 	add_filter( 'qi_blocks_filter_block_style_dependency', 'qi_blocks_set_slider_style_as_block_style_dependency', 5 );
 }
 
+if ( ! function_exists( 'qi_blocks_set_swiper_script_as_editor_dependency' ) ) {
+	/**
+	 * Ensure Swiper is loaded before editor scripts that initialize sliders.
+	 *
+	 * @param array $script_dependency
+	 *
+	 * @return array
+	 */
+	function qi_blocks_set_swiper_script_as_editor_dependency( $script_dependency ) {
+		$script_dependency[] = 'swiper';
+
+		return $script_dependency;
+	}
+
+	add_filter( 'qi_blocks_filter_main_editor_dependencies', 'qi_blocks_set_swiper_script_as_editor_dependency', 15 );
+}
+
 if ( ! function_exists( 'qi_blocks_get_block_slider_attributes' ) ) {
 	/**
 	 * Function that return block slider attributes

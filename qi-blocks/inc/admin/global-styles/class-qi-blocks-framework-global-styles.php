@@ -104,6 +104,10 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 				$options = get_option( 'qi_blocks_global_styles' );
 				$page_id = isset( $_GET['page_id'] ) && ! empty( $_GET['page_id'] ) ? sanitize_text_field( $_GET['page_id'] ) : '';
 
+				if ( ! $this->user_can_manage_global_styles_target( $page_id ) ) {
+					qi_blocks_get_ajax_status( 'error', esc_html__( 'You are not allowed to access these options.', 'qi-blocks' ), array() );
+				}
+
 				if ( isset( $options ) ) {
 
 					if ( isset( $options['widgets'] ) && 'widget' === $page_id ) {
@@ -133,6 +137,10 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 					$options = $this->sanitize_global_options( $response_data->options );
 					$page_id = isset( $response_data->page_id ) && ! empty( $response_data->page_id ) ? esc_attr( $response_data->page_id ) : '';
 
+					if ( ! $this->user_can_manage_global_styles_target( $page_id ) ) {
+						qi_blocks_get_ajax_status( 'error', esc_html__( 'You are not allowed to update these options.', 'qi-blocks' ) );
+					}
+
 					// Sanitize and validate CSS options.
 					if ( isset( $global_options['widgets'] ) && 'widget' === $page_id ) {
 						$global_options['widgets'] = $options;
@@ -151,6 +159,35 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 					qi_blocks_get_ajax_status( 'error', esc_html__( 'Options are invalid', 'qi-blocks' ) );
 				}
 			}
+		}
+
+		/**
+		 * Verify object-level authorization for a global styles target.
+		 *
+		 * @param string $page_id Numeric post ID, or one of: widget, template.
+		 *
+		 * @return bool
+		 */
+		private function user_can_manage_global_styles_target( $page_id ) {
+			if ( 'widget' === $page_id || 'template' === $page_id ) {
+				return current_user_can( 'edit_theme_options' );
+			}
+
+			if ( '' === $page_id ) {
+				return current_user_can( 'edit_theme_options' );
+			}
+
+			if ( is_numeric( $page_id ) ) {
+				$post_id = (int) $page_id;
+
+				if ( $post_id <= 0 ) {
+					return false;
+				}
+
+				return current_user_can( 'edit_post', $post_id );
+			}
+
+			return false;
 		}
 
 		/**
@@ -342,10 +379,30 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 			return $sanitized_options;
 		}
 
+		public function has_configured_global_styles( $global_styles ) {
+			if ( empty( $global_styles ) || ! is_array( $global_styles ) ) {
+				return false;
+			}
+
+			foreach ( $global_styles as $section ) {
+				if ( empty( $section ) || ! is_array( $section ) ) {
+					continue;
+				}
+
+				foreach ( $section as $item ) {
+					if ( ! empty( $item ) ) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
 		public function add_page_inline_style() {
 			$global_styles = get_option( 'qi_blocks_global_styles' );
 
-			if ( ! empty( $global_styles ) ) {
+			if ( $this->has_configured_global_styles( $global_styles ) ) {
 				$page_id = apply_filters( 'qi_blocks_filter_page_inline_style_page_id', get_queried_object_id() );
 				$styles  = array();
 				$fonts   = array(

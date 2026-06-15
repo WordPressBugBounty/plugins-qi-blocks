@@ -1,10 +1,10 @@
 === Qi Blocks ===
 Contributors: qodeinteractive
 Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
-Requires at least: 5.8
-Tested up to: 6.9
+Requires at least: 6.3
+Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.4.9
+Stable tag: 1.7
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -237,14 +237,14 @@ You can report security bugs through the Patchstack Vulnerability Disclosure Pro
 
 = Minimum Requirements =
 
-* WordPress 5.8 or greater
-* PHP version 7.0 or greater
+* WordPress 6.3 or greater
+* PHP version 7.4 or greater
 * MySQL version 5.0 or greater
 
 = We recommend your host supports: =
 
-* PHP version 7.4 or greater
-* MySQL version 5.6 or greater
+* WordPress 6.6 or greater
+* PHP version 8.0 or greater
 * WordPress Memory limit of 128 MB or greater
 
 = Installation =
@@ -291,6 +291,26 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.5 - 15-06-2026 =
+- Improved all blocks to Block API v3
+- Improved block save/edit output to include correct `wp-block-qi-blocks-*` wrapper classes
+- Improved SVG sanitizer library PHP 8.4 compatibility
+- Fixed Block validation errors after apiVersion 3 migration (counter, button, column, columns, and others)
+- Fixed Site Editor `getAttribute` error when interacting with column/columns layouts
+- Fixed Full Site Editor stability improvements in global editor helpers (null-safe iframe/parent access)
+- Fixed unauthorized global styles save/read
+- Fixed a performance issue where Qi Blocks could cause heavy `wp_options` write churn on frontend requests due to a broken block template HTML transient cache
+- Reduced frontend overhead by registering 3rd-party block asset hooks once instead of per block instance
+- Skipped block template HTML resolution on non-block themes to avoid unnecessary work on classic/Elementor setups
+- Removed legacy manual iframe stylesheet injection from the block editor script
+- Improved frontend performance by loading main/grid/animate assets only when Qi Blocks are present on the page
+- Improved global styles frontend handler to skip processing when no styles are configured
+- Improved 3rd-party block script detection with per-request caching instead of repeated `has_block()` / option lookups
+- Improved block template HTML caching for empty results to reduce repeated template resolution
+- Moved Animate.css registration to `init` and limited enqueue to editor/frontend pages that actually use Qi Blocks
+- Registered `should_load_separate_core_block_assets` once instead of per block instance
+- Minor fixed
 
 = 1.4.9 - 24-03-2026 =
 - Fixed the "Function WP_Scripts::add was called..." notice
