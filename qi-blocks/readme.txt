@@ -4,7 +4,7 @@ Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 6.3
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.7
+Stable tag: 1.5.1
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -291,6 +291,23 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.5.1 - 24-06-2026 =
+- Improved WordPress 6.3+/7.0 editor canvas iframe compatibility (blob `editor-canvas` iframe)
+- Improved editor canvas asset loading via lightweight `editor-canvas.js` bundle and localized `qiBlocksEditor.vars` inside the iframe
+- Improved `qiBlocksEditor` runtime helpers available in the editor canvas (`qodefGetCurrentBlockElement`, `qodefSetEditorLinkBehavior`)
+- Improved block selection for static blocks (Image Slider, Image Gallery, Masonry/Pinterest Gallery, Timeline Showcase, and others) by resolving `clientId` from `uniqueClass` when `data-block` is not present on the canvas markup
+- Improved editor context detection (`isQiEditorContext`) for iframe bodies (`block-editor-iframe__body`) instead of relying on `wp-admin` alone
+- Improved deferred editor block-selection binding (DOM ready, iframe load, and canvas mutations) so listeners attach after React portals block content
+- Improved Swiper behavior in the editor (disabled autoplay, touch/drag, and click prevention so blocks remain selectable)
+- Improved editor styles for image, gallery, and slider blocks inside `.block-editor-iframe__body` (pointer-events and swiper navigation)
+- Improved iframe discovery in editor helpers for WordPress 7.0 layout (`.editor-visual-editor`, direct `iframe[name="editor-canvas"]` lookup)
+- Fixed blocks without `useBlockProps()` not opening the block sidebar on first click in the editor canvas
+- Fixed `editor-canvas.js` block-selection init running in `<head>` before `body` exists, which prevented click handlers from binding
+- Fixed Masonry gallery re-init when `uniqueClass` was passed without an event argument
+- Fixed Parallax Images, Product List, and Table of Contents editor scripts using `wp-admin` body class checks that fail inside the editor canvas iframe
+- Fixed Follow Info hover script running in the editor on gallery blocks
+- Skipped lightbox popup initialization in the editor to prevent click interception on image blocks
 
 = 1.5 - 15-06-2026 =
 - Improved all blocks to Block API v3

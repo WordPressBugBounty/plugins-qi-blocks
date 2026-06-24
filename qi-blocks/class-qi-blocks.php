@@ -5,7 +5,7 @@ Description: A collection of blocks for the Gutenberg block editor, developed by
 Author: Qode Interactive
 Author URI: https://qodeinteractive.com/
 Plugin URI: https://qodeinteractive.com/qi-blocks-for-gutenberg/
-Version: 1.5
+Version: 1.5.1
 Requires at least: 6.3
 Requires PHP: 7.4
 Text Domain: qi-blocks
@@ -55,9 +55,12 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 				// Register plugin's editor assets.
 				add_action( 'init', array( $this, 'register_editor_assets' ) );
 
-				// Enqueue plugin's editor assets.
-				add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
-				add_action( 'enqueue_block_editor_assets', array( $this, 'localize_editor_js_scripts' ) );
+			// Enqueue plugin's editor assets. The main editor script is registered and
+			// localized in register_editor_assets() (on `init`), so it only needs enqueuing here.
+			add_action( 'enqueue_block_editor_assets', array( $this, 'enqueue_editor_assets' ) );
+
+				// Load editor CSS inside the block canvas iframe (WP 6.3+ / block themes).
+				add_action( 'enqueue_block_assets', array( $this, 'enqueue_editor_canvas_assets' ) );
 
 				// Set plugin's blocks style dependency.
 				add_filter( 'qi_blocks_filter_block_style_dependency', array( $this, 'set_block_style_dependency' ) );
@@ -215,19 +218,13 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 			// Register CSS styles.
 			wp_register_style( 'qi-blocks-main', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main.css', array(), QI_BLOCKS_VERSION );
 			wp_register_style( 'qi-blocks-main-editor', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main-editor.css', array( 'qi-blocks-main' ), QI_BLOCKS_VERSION );
-		}
 
-		public function enqueue_editor_assets() {
-			$this->enqueue_3rd_party_assets();
-
-			// Enqueue CSS grid styles.
-			wp_enqueue_style( 'qi-blocks-grid-editor' );
-
-			// Enqueue CSS styles.
-			wp_enqueue_style( 'qi-blocks-main' );
-			wp_enqueue_style( 'qi-blocks-main-editor' );
-
-			// Enqueue JS scripts.
+			// Register the main editor JS script early (on `init`) so that the per-block
+			// editor scripts - which declare `qi-blocks-main-editor` as a dependency at
+			// registration time - resolve against a real, registered handle. Registering it
+			// here (instead of only inside enqueue_editor_assets) guarantees the handle and its
+			// localized `qiBlocksEditor` data are available whenever the script is loaded,
+			// either directly or pulled in as a block editor_script dependency.
 			$script_dependency = apply_filters(
 				'qi_blocks_filter_main_editor_dependencies',
 				array(
@@ -245,11 +242,90 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 				)
 			);
 
-			wp_enqueue_script( 'qi-blocks-main-editor', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main-editor.js', $script_dependency, QI_BLOCKS_VERSION, true );
+			wp_register_script( 'qi-blocks-main-editor', QI_BLOCKS_ASSETS_URL_PATH . '/dist/main-editor.js', $script_dependency, QI_BLOCKS_VERSION, true );
 
 			// Enqueue localization data for our blocks.
 			if ( function_exists( 'wp_set_script_translations' ) ) {
 				wp_set_script_translations( 'qi-blocks-main-editor', 'qi-blocks' );
+			}
+
+			// Attach the localized variables to the now-registered handle. WordPress prints the
+			// localized data whenever the script is output, so this works regardless of whether
+			// the script is enqueued directly or as a block editor_script dependency.
+			$this->localize_editor_js_scripts();
+		}
+
+		public function enqueue_editor_assets() {
+			$this->enqueue_3rd_party_assets();
+
+			// Enqueue CSS grid styles.
+			wp_enqueue_style( 'qi-blocks-grid-editor' );
+
+			// Enqueue CSS styles.
+			wp_enqueue_style( 'qi-blocks-main' );
+			wp_enqueue_style( 'qi-blocks-main-editor' );
+
+			// Enqueue JS scripts (already registered and localized in register_editor_assets).
+			wp_enqueue_script( 'qi-blocks-main-editor' );
+		}
+
+		public function enqueue_editor_canvas_assets() {
+			if ( ! is_admin() ) {
+				return;
+			}
+
+			wp_enqueue_style( 'qi-blocks-main' );
+			wp_enqueue_style( 'qi-blocks-grid-editor' );
+			wp_enqueue_style( 'qi-blocks-main-editor' );
+
+			/*
+			 * WordPress 6.3+/7.0 renders the editor content inside the canvas iframe and only
+			 * loads assets enqueued on `enqueue_block_assets` there - editor scripts (and their
+			 * `qiBlocksEditor` localization) stay in the parent document. While collecting the
+			 * iframe assets, core sets `should_load_block_editor_scripts_and_styles` to false,
+			 * which is how we detect the iframe pass. In that pass we expose the qiBlocksEditor
+			 * variables so any block markup/script running inside the iframe can read them.
+			 *
+			 * We intentionally skip this on the parent editor page: there the full qiBlocksEditor
+			 * object (including the runtime methods added by main-editor.js) already exists, and
+			 * re-declaring it would wipe those methods.
+			 */
+			$is_iframe_canvas_pass = ! apply_filters( 'should_load_block_editor_scripts_and_styles', true );
+
+			if ( $is_iframe_canvas_pass ) {
+				if ( ! wp_script_is( 'qi-blocks-editor-canvas-vars', 'registered' ) ) {
+					// Source-less handle used only to carry the localized variables into the iframe.
+					wp_register_script( 'qi-blocks-editor-canvas-vars', false, array(), QI_BLOCKS_VERSION, false );
+				}
+
+				wp_enqueue_script( 'qi-blocks-editor-canvas-vars' );
+
+				wp_localize_script(
+					'qi-blocks-editor-canvas-vars',
+					'qiBlocksEditor',
+					array(
+						'vars' => $this->get_localize_editor_js_variables(),
+					)
+				);
+
+				/*
+				 * Lightweight iframe bundle exposing the dependency-free runtime helpers
+				 * (qodefGetCurrentBlockElement, qodefSetEditorLinkBehavior) on the same
+				 * qiBlocksEditor object so other scripts running inside the iframe can use them.
+				 * It depends on the vars handle so `var qiBlocksEditor = { vars }` is printed
+				 * first and the bundle only augments it (it never overwrites existing members).
+				 */
+				if ( ! wp_script_is( 'qi-blocks-editor-canvas', 'registered' ) ) {
+					wp_register_script(
+						'qi-blocks-editor-canvas',
+						QI_BLOCKS_ASSETS_URL_PATH . '/dist/editor-canvas.js',
+						array( 'qi-blocks-editor-canvas-vars' ),
+						QI_BLOCKS_VERSION,
+						true
+					);
+				}
+
+				wp_enqueue_script( 'qi-blocks-editor-canvas' );
 			}
 		}
 
@@ -306,8 +382,8 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 			);
 		}
 
-		public function localize_editor_js_scripts() {
-			$global = apply_filters(
+		public function get_localize_editor_js_variables() {
+			return apply_filters(
 				'qi_blocks_filter_localize_main_editor_js',
 				array(
 					'siteURL'                 => esc_url( get_home_url( '/' ) ),
@@ -333,12 +409,14 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 					'dateIcon'                => '<svg class="qodef-e-info-item-icon" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 14.6 14.6" xml:space="preserve"><path d="M10.9,1.3V0.2h-0.6v1.2H4.3V0.2H3.7v1.2H0.2v13.1h14.3V1.3H10.9z M10.9,1.9v1.2h-0.6V1.9H10.9z M4.3,1.9v1.2H3.7V1.9H4.3z M13.8,13.8H0.8V4.9h13.1V13.8z"/></svg>',
 				)
 			);
+		}
 
+		public function localize_editor_js_scripts() {
 			wp_localize_script(
 				'qi-blocks-main-editor',
 				'qiBlocksEditor',
 				array(
-					'vars' => $global,
+					'vars' => $this->get_localize_editor_js_variables(),
 				)
 			);
 		}
