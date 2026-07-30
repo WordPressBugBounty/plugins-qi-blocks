@@ -4,7 +4,7 @@ Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 6.3
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.5.1
+Stable tag: 1.5.2
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -291,6 +291,17 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.5.2 - 30-07-2026 =
+- Fixed nested core blocks (Paragraph, Heading, Image, and other non-Qi blocks) inside Advanced Columns not selectable in the WordPress 7.0 editor canvas, patterns, and synced pattern edit mode
+- Fixed editor canvas click handler selecting the parent Advanced Column when clicking nested core block content
+- Fixed Qi blocks (Image Slider, Image Gallery, Timeline, and others) not selectable inside third-party layout blocks (Stackable columns, Blocksy content blocks, and similar) when editing patterns in the WordPress 7.0 editor canvas
+- Fixed Advanced Column not selectable in the editor canvas when it contains Qi content blocks (e.g. Section Title, Single Image); layout blocks now stay with Gutenberg while only content blocks use the uniqueClass selection helper
+- Fixed Advanced Column / Columns selection being stolen by nested RichText fields (Section Title, Advanced Text, etc.) after selecting the column from List View in the WordPress 7.0 editor canvas
+- Improved Advanced Column editor to use `useInnerBlocksProps()` for correct inner block markup and selection in the canvas iframe
+- Improved Qi-only editor canvas click handling so the selection helper runs only on Qi content block markup and ignores `core/*` blocks via `data-type`
+- Improved editor canvas click handling to resolve Qi block selection via `uniqueClass` even when the nearest `data-type` ancestor belongs to another plugin's container block
+- Improved `uniqueClass` to `clientId` resolution to prefer the innermost Qi content block before any ancestor `data-block` (e.g. Image Slider inside Advanced Column)
 
 = 1.5.1 - 24-06-2026 =
 - Improved WordPress 6.3+/7.0 editor canvas iframe compatibility (blob `editor-canvas` iframe)
