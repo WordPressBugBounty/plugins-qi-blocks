@@ -2,9 +2,9 @@
 Contributors: qodeinteractive
 Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 6.3
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.2
+Stable tag: 1.5.3
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -291,6 +291,12 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.5.3 - 10-09-2026 =
+- Improved grid editor styles
+- Fixed canvas clicks on nested Qi text blocks (Advanced Text, Section Title) selecting the parent Advanced Column, then fighting the column on further clicks
+- Fixed Single Image, Image Gallery, and similar Qi blocks not selectable on the Appearance → Widgets screen (and Customize Widgets), where the editor has no canvas iframe and selection was never bound
+- Fixed Widgets clicks on Qi blocks selecting the whole widget area (`core/widget-area`) instead of the nested Qi block
 
 = 1.5.2 - 30-07-2026 =
 - Fixed nested core blocks (Paragraph, Heading, Image, and other non-Qi blocks) inside Advanced Columns not selectable in the WordPress 7.0 editor canvas, patterns, and synced pattern edit mode
