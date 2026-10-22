@@ -319,26 +319,7 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 					$allowed_font_keys = [ 'family', 'weight', 'style' ];
 
 					foreach ( $allowed_font_keys as $fkey ) {
-
-						if ( isset( $fonts_array[ $fkey ] ) && is_array( $fonts_array[ $fkey ] ) ) {
-
-							// sanitize each element of the array.
-							$san_fonts->$fkey = array_map(
-								function ( $val ) {
-									// number? → clean number.
-									if ( is_numeric( $val ) ) {
-										return intval( $val );
-									}
-
-									// string? → clean string.
-									return sanitize_text_field( wp_strip_all_tags( (string) $val ) );
-								},
-								$fonts_array[ $fkey ]
-							);
-
-						} else {
-							$san_fonts->$fkey = array();
-						}
+						$san_fonts->$fkey = isset( $fonts_array[ $fkey ] ) ? $this->sanitize_font_list( $fonts_array[ $fkey ] ) : array();
 					}
 
 					$san_entry->fonts = $san_fonts;
@@ -351,23 +332,32 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 					);
 				}
 
-				// Sanitize values (array of selector/styles objects).
+				// Sanitize values. JSON arrays stay arrays; associative objects from json_decode() are stdClass.
 				$san_entry->values = array();
-				if ( isset( $entry['values'] ) && is_array( $entry['values'] ) ) {
-					foreach ( $entry['values'] as $val_item ) {
+				$raw_values        = isset( $entry['values'] ) ? $entry['values'] : array();
+
+				if ( is_object( $raw_values ) ) {
+					$raw_values = array_values( (array) $raw_values );
+				}
+
+				if ( is_array( $raw_values ) ) {
+					foreach ( $raw_values as $val_item ) {
 						$val_item = is_array( $val_item ) ? $val_item : ( is_object( $val_item ) ? (array) $val_item : array() );
 
 						$san_val           = new stdClass();
-						$san_val->selector = $this->sanitize_block_selector( $val_item['selector'] );
+						$san_val->selector = $this->sanitize_block_selector( isset( $val_item['selector'] ) ? $val_item['selector'] : '' );
 
 						// Sanitize styles using parser/whitelist.
 						$san_val->styles        = isset( $val_item['styles'] ) ? $sanitize_css_block( $val_item['styles'] ) : '';
 						$san_val->tablet_styles = isset( $val_item['tablet_styles'] ) ? $sanitize_css_block( $val_item['tablet_styles'] ) : '';
 						$san_val->mobile_styles = isset( $val_item['mobile_styles'] ) ? $sanitize_css_block( $val_item['mobile_styles'] ) : '';
-						$san_val->custom_styles = isset( $val_item['custom_styles'] ) ? $val_item['custom_styles'] : new stdClass();
+						$san_val->custom_styles = $this->sanitize_custom_styles(
+							isset( $val_item['custom_styles'] ) ? $val_item['custom_styles'] : array(),
+							$sanitize_css_block
+						);
 
 						// include only if selector or styles remain.
-						if ( '' !== $san_val->selector || '' !== $san_val->styles ) {
+						if ( '' !== $san_val->selector || '' !== $san_val->styles || ! empty( $san_val->tablet_styles ) || ! empty( $san_val->mobile_styles ) || ! empty( $san_val->custom_styles ) ) {
 							$san_entry->values[] = $san_val;
 						}
 					}
@@ -379,18 +369,291 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 			return $sanitized_options;
 		}
 
-		public function has_configured_global_styles( $global_styles ) {
-			if ( empty( $global_styles ) || ! is_array( $global_styles ) ) {
-				return false;
+		/**
+		 * Saved styles mix arrays (initial option, JSON lists) and stdClass (json_decode of objects).
+		 *
+		 * @param mixed $value Stored section, block, or style node.
+		 *
+		 * @return bool
+		 */
+		private function is_style_collection( $value ) {
+			return is_array( $value ) || is_object( $value );
+		}
+
+		/**
+		 * @param mixed $value Array or object.
+		 *
+		 * @return array
+		 */
+		private function to_style_array( $value ) {
+			if ( is_array( $value ) ) {
+				return $value;
 			}
 
-			foreach ( $global_styles as $section ) {
-				if ( empty( $section ) || ! is_array( $section ) ) {
+			if ( is_object( $value ) ) {
+				return (array) $value;
+			}
+
+			return array();
+		}
+
+		/**
+		 * @param mixed  $item    Array or object node.
+		 * @param string $key     Property name.
+		 * @param mixed  $default Fallback.
+		 *
+		 * @return mixed
+		 */
+		private function style_prop( $item, $key, $default = null ) {
+			if ( is_array( $item ) ) {
+				return array_key_exists( $key, $item ) ? $item[ $key ] : $default;
+			}
+
+			if ( is_object( $item ) && property_exists( $item, $key ) ) {
+				return $item->{$key};
+			}
+
+			return $default;
+		}
+
+		/**
+		 * empty() on stdClass is unreliable; cast so an empty object is empty and a populated one is not.
+		 *
+		 * @param mixed $value Value to test.
+		 *
+		 * @return bool
+		 */
+		private function is_non_empty_style_value( $value ) {
+			if ( is_array( $value ) || is_object( $value ) ) {
+				return ! empty( $this->to_style_array( $value ) );
+			}
+
+			return ! empty( $value );
+		}
+
+		/**
+		 * Font family/weight/style may arrive as a list, a stdClass, or a single scalar.
+		 *
+		 * @param mixed $value Raw font list.
+		 *
+		 * @return array
+		 */
+		private function sanitize_font_list( $value ) {
+			if ( is_object( $value ) ) {
+				$value = array_values( (array) $value );
+			} elseif ( is_string( $value ) || is_numeric( $value ) ) {
+				$value = array( $value );
+			}
+
+			if ( ! is_array( $value ) ) {
+				return array();
+			}
+
+			$clean = array();
+
+			foreach ( $value as $val ) {
+				if ( is_array( $val ) || is_object( $val ) ) {
 					continue;
 				}
 
-				foreach ( $section as $item ) {
-					if ( ! empty( $item ) ) {
+				if ( is_numeric( $val ) ) {
+					$clean[] = intval( $val );
+					continue;
+				}
+
+				$clean[] = sanitize_text_field( wp_strip_all_tags( (string) $val ) );
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * custom_styles is either [] or a list/map of {key, value} breakpoint rules.
+		 *
+		 * @param mixed    $raw               Raw custom styles.
+		 * @param callable $sanitize_css_block CSS declaration sanitizer.
+		 *
+		 * @return array
+		 */
+		private function sanitize_custom_styles( $raw, $sanitize_css_block ) {
+			if ( is_object( $raw ) ) {
+				$raw = (array) $raw;
+			}
+
+			if ( ! is_array( $raw ) ) {
+				return array();
+			}
+
+			$is_list = array() === $raw || array_keys( $raw ) === range( 0, count( $raw ) - 1 );
+
+			// A single {key, value} object/array, not a list of rules.
+			if ( ! $is_list && ( isset( $raw['value'] ) || isset( $raw['styles'] ) ) ) {
+				$raw = array( $raw );
+			}
+
+			$clean = array();
+
+			foreach ( $raw as $item ) {
+				if ( is_string( $item ) ) {
+					$css = $sanitize_css_block( $item );
+
+					if ( '' === $css ) {
+						continue;
+					}
+
+					$entry          = new stdClass();
+					$entry->key     = '';
+					$entry->value   = $css;
+					$clean[]        = $entry;
+					continue;
+				}
+
+				if ( is_object( $item ) ) {
+					$item = (array) $item;
+				}
+
+				if ( ! is_array( $item ) ) {
+					continue;
+				}
+
+				$css_source = '';
+
+				if ( isset( $item['value'] ) && is_string( $item['value'] ) ) {
+					$css_source = $item['value'];
+				} elseif ( isset( $item['styles'] ) && is_string( $item['styles'] ) ) {
+					$css_source = $item['styles'];
+				}
+
+				$css = $sanitize_css_block( $css_source );
+
+				if ( '' === $css ) {
+					continue;
+				}
+
+				$entry        = new stdClass();
+				$breakpoint   = isset( $item['key'] ) ? $item['key'] : '';
+				$entry->key   = is_numeric( $breakpoint ) ? (string) absint( $breakpoint ) : '';
+				$entry->value = $css;
+				$clean[]      = $entry;
+			}
+
+			return $clean;
+		}
+
+		/**
+		 * @param mixed  $section               widgets / templates / one post's styles. Array or object.
+		 * @param array  $styles                Collected CSS rules.
+		 * @param array  $fonts                 Collected font family/weight/style.
+		 * @param string $selector_prefix       Prepended to each selector (e.g. "body ").
+		 * @param string $required_key_fragment Skip blocks whose key does not contain this fragment.
+		 */
+		private function collect_section_styles( $section, &$styles, &$fonts, $selector_prefix = '', $required_key_fragment = '' ) {
+			if ( ! $this->is_style_collection( $section ) ) {
+				return;
+			}
+
+			foreach ( $this->to_style_array( $section ) as $block_style ) {
+				if ( ! $this->is_non_empty_style_value( $block_style ) || ! $this->is_style_collection( $block_style ) ) {
+					continue;
+				}
+
+				$key = (string) $this->style_prop( $block_style, 'key', '' );
+
+				if ( '' !== $required_key_fragment && false === strpos( $key, $required_key_fragment ) ) {
+					continue;
+				}
+
+				$block_fonts = $this->to_style_array( $this->style_prop( $block_style, 'fonts', array() ) );
+
+				foreach ( array_keys( $fonts ) as $font_key ) {
+					if ( ! array_key_exists( $font_key, $block_fonts ) ) {
+						continue;
+					}
+
+					$font_values = $this->sanitize_font_list( $block_fonts[ $font_key ] );
+
+					if ( ! empty( $font_values ) ) {
+						$fonts[ $font_key ] = array_merge( $fonts[ $font_key ], $font_values );
+					}
+				}
+
+				$values = $this->style_prop( $block_style, 'values', array() );
+
+				foreach ( $this->to_style_array( $values ) as $block_element ) {
+					if ( ! $this->is_style_collection( $block_element ) ) {
+						continue;
+					}
+
+					$block_selector = $selector_prefix . $this->sanitize_block_selector( (string) $this->style_prop( $block_element, 'selector', '' ) );
+					$desktop        = (string) $this->style_prop( $block_element, 'styles', '' );
+					$tablet         = (string) $this->style_prop( $block_element, 'tablet_styles', '' );
+					$mobile         = (string) $this->style_prop( $block_element, 'mobile_styles', '' );
+
+					if ( '' !== $desktop ) {
+						$styles[] = $block_selector . '{' . $desktop . '}';
+					}
+
+					if ( '' !== $tablet ) {
+						$styles[] = '@media (max-width: 1024px) { ' . $block_selector . '{' . $tablet . '} }';
+					}
+
+					if ( '' !== $mobile ) {
+						$styles[] = '@media (max-width: 680px) { ' . $block_selector . '{' . $mobile . '} }';
+					}
+
+					$this->append_custom_styles( $styles, $this->style_prop( $block_element, 'custom_styles', array() ), $block_selector );
+				}
+			}
+		}
+
+		/**
+		 * @param array  $styles         Collected CSS rules.
+		 * @param mixed  $custom_styles  List, map, or {key,value} node.
+		 * @param string $block_selector Full selector already prefixed.
+		 */
+		private function append_custom_styles( &$styles, $custom_styles, $block_selector ) {
+			foreach ( $this->to_style_array( $custom_styles ) as $custom_key => $custom_style ) {
+				if ( ! $this->is_style_collection( $custom_style ) ) {
+					continue;
+				}
+
+				$value = (string) $this->style_prop( $custom_style, 'value', '' );
+
+				if ( '' === $value ) {
+					$value = (string) $this->style_prop( $custom_style, 'styles', '' );
+				}
+
+				if ( '' === $value ) {
+					continue;
+				}
+
+				$breakpoint = $this->style_prop( $custom_style, 'key', '' );
+
+				if ( '' === $breakpoint || null === $breakpoint ) {
+					$breakpoint = is_numeric( $custom_key ) ? '' : $custom_key;
+				}
+
+				if ( is_numeric( $breakpoint ) && (int) $breakpoint > 0 ) {
+					$styles[] = '@media (max-width: ' . absint( $breakpoint ) . 'px) { ' . $block_selector . '{' . $value . '} }';
+					continue;
+				}
+
+				$styles[] = $block_selector . '{' . $value . '}';
+			}
+		}
+
+		public function has_configured_global_styles( $global_styles ) {
+			if ( ! $this->is_non_empty_style_value( $global_styles ) || ! $this->is_style_collection( $global_styles ) ) {
+				return false;
+			}
+
+			foreach ( $this->to_style_array( $global_styles ) as $section ) {
+				if ( ! $this->is_style_collection( $section ) ) {
+					continue;
+				}
+
+				foreach ( $this->to_style_array( $section ) as $item ) {
+					if ( $this->is_non_empty_style_value( $item ) ) {
 						return true;
 					}
 				}
@@ -411,104 +674,28 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 					'style'  => array(),
 				);
 
-				$update               = false;
 				$include_italic_fonts = false;
 				$templates_selector   = 'body ';
 
-				// Widgets blocks.
-				if ( isset( $global_styles['widgets'] ) && ! empty( $global_styles['widgets'] ) ) {
-					foreach ( $global_styles['widgets'] as $block_style ) {
-						// Skin styles loading if item is invalid.
-						if ( empty( $block_style ) ) {
-							continue;
-						}
+				// Widgets, templates, and posts are arrays until the first save, then stdClass
+				// because update-styles json_decodes objects. Read both shapes.
+				$widget_styles = $this->style_prop( $global_styles, 'widgets', array() );
 
-						// If the selector key is not allowed skip that styles.
-						if ( strpos( $block_style->key, 'qodef-widget-block' ) === false ) {
-							continue;
-						}
-
-						$block_style_fonts = (array) $block_style->fonts;
-						foreach ( array_keys( $fonts ) as $font_key ) {
-							if ( array_key_exists( $font_key, $block_style_fonts ) ) {
-								$fonts[ $font_key ] = array_merge( $fonts[ $font_key ], $block_style_fonts[ $font_key ] );
-							}
-						}
-
-						foreach ( $block_style->values as $block_element ) {
-							$block_selector = $this->sanitize_block_selector( $block_element->selector );
-
-							if ( ! empty( $block_element->styles ) ) {
-								$styles[] = $templates_selector . $block_selector . '{' . $block_element->styles . '}';
-							}
-
-							if ( isset( $block_element->tablet_styles ) && ! empty( $block_element->tablet_styles ) ) {
-								$styles[] = '@media (max-width: 1024px) { ' . $templates_selector . $block_selector . '{' . $block_element->tablet_styles . '} }';
-							}
-
-							if ( isset( $block_element->mobile_styles ) && ! empty( $block_element->mobile_styles ) ) {
-								$styles[] = '@media (max-width: 680px) { ' . $templates_selector . $block_selector . '{' . $block_element->mobile_styles . '} }';
-							}
-
-							if ( isset( $block_element->custom_styles ) && ! empty( $block_element->custom_styles ) ) {
-								foreach ( $block_element->custom_styles as $custom_style ) {
-									if ( isset( $custom_style->value ) && ! empty( $custom_style->value ) ) {
-										$styles[] = '@media (max-width: ' . $custom_style->key . 'px) { ' . $templates_selector . $block_selector . '{' . $custom_style->value . '} }';
-									}
-								}
-							}
-						}
-					}
+				if ( $this->is_non_empty_style_value( $widget_styles ) ) {
+					$this->collect_section_styles( $widget_styles, $styles, $fonts, $templates_selector, 'qodef-widget-block' );
 				}
 
-				// Template blocks.
-				if ( isset( $global_styles['templates'] ) && ! empty( $global_styles['templates'] ) ) {
-					foreach ( $global_styles['templates'] as $block_style ) {
-						// Skin styles loading if item is invalid.
-						if ( empty( $block_style ) ) {
-							continue;
-						}
+				$template_styles = $this->style_prop( $global_styles, 'templates', array() );
 
-						// If the selector key is not allowed skip that styles.
-						if ( empty( $block_style->key ) || strpos( $block_style->key, 'qodef-template-block' ) === false ) {
-							continue;
-						}
-
-						$block_style_fonts = (array) $block_style->fonts;
-						foreach ( array_keys( $fonts ) as $font_key ) {
-							if ( array_key_exists( $font_key, $block_style_fonts ) ) {
-								$fonts[ $font_key ] = array_merge( $fonts[ $font_key ], $block_style_fonts[ $font_key ] );
-							}
-						}
-
-						foreach ( $block_style->values as $block_element ) {
-							$block_selector = $this->sanitize_block_selector( $block_element->selector );
-
-							if ( ! empty( $block_element->styles ) ) {
-								$styles[] = $templates_selector . $block_selector . '{' . $block_element->styles . '}';
-							}
-
-							if ( isset( $block_element->tablet_styles ) && ! empty( $block_element->tablet_styles ) ) {
-								$styles[] = '@media (max-width: 1024px) { ' . $templates_selector . $block_selector . '{' . $block_element->tablet_styles . '} }';
-							}
-
-							if ( isset( $block_element->mobile_styles ) && ! empty( $block_element->mobile_styles ) ) {
-								$styles[] = '@media (max-width: 680px) { ' . $templates_selector . $block_selector . '{' . $block_element->mobile_styles . '} }';
-							}
-
-							if ( isset( $block_element->custom_styles ) && ! empty( $block_element->custom_styles ) ) {
-								foreach ( $block_element->custom_styles as $custom_style ) {
-									if ( isset( $custom_style->value ) && ! empty( $custom_style->value ) ) {
-										$styles[] = '@media (max-width: ' . $custom_style->key . 'px) { ' . $templates_selector . $block_selector . '{' . $custom_style->value . '} }';
-									}
-								}
-							}
-						}
-					}
+				if ( $this->is_non_empty_style_value( $template_styles ) ) {
+					$this->collect_section_styles( $template_styles, $styles, $fonts, $templates_selector, 'qodef-template-block' );
 				}
+
+				$post_styles = $this->style_prop( $global_styles, 'posts', array() );
+				$page_styles = $this->style_prop( $post_styles, (string) $page_id, null );
 
 				// Post blocks.
-				if ( isset( $global_styles['posts'][ $page_id ] ) && ! empty( $global_styles['posts'][ $page_id ] ) ) {
+				if ( $this->is_non_empty_style_value( $page_styles ) ) {
 					$get_page_content = trim( get_the_content( null, false, $page_id ) );
 
 					// Check if the content contains reusable blocks and expand the page content with the real reusable content.
@@ -535,45 +722,7 @@ if ( ! class_exists( 'Qi_Blocks_Framework_Global_Styles' ) ) {
 						$include_italic_fonts = true;
 					}
 
-					foreach ( $global_styles['posts'][ $page_id ] as $block_index => $block_style ) {
-						// Skin styles loading if item is invalid.
-						if ( empty( $block_style ) ) {
-							continue;
-						}
-
-						$block_style_fonts = ! empty( $block_style->fonts ) ? (array) $block_style->fonts : array();
-
-						foreach ( array_keys( $fonts ) as $font_key ) {
-
-							if ( array_key_exists( $font_key, $block_style_fonts ) ) {
-								$fonts[ $font_key ] = array_merge( $fonts[ $font_key ], $block_style_fonts[ $font_key ] );
-							}
-						}
-
-						foreach ( $block_style->values as $block_element ) {
-							$block_selector = $this->sanitize_block_selector( $block_element->selector );
-
-							if ( ! empty( $block_element->styles ) ) {
-								$styles[] = $block_selector . '{' . $block_element->styles . '}';
-							}
-
-							if ( isset( $block_element->tablet_styles ) && ! empty( $block_element->tablet_styles ) ) {
-								$styles[] = '@media (max-width: 1024px) { ' . $block_selector . '{' . $block_element->tablet_styles . '} }';
-							}
-
-							if ( isset( $block_element->mobile_styles ) && ! empty( $block_element->mobile_styles ) ) {
-								$styles[] = '@media (max-width: 680px) { ' . $block_selector . '{' . $block_element->mobile_styles . '} }';
-							}
-
-							if ( isset( $block_element->custom_styles ) && ! empty( $block_element->custom_styles ) ) {
-								foreach ( $block_element->custom_styles as $custom_style ) {
-									if ( isset( $custom_style->value ) && ! empty( $custom_style->value ) ) {
-										$styles[] = '@media (max-width: ' . $custom_style->key . 'px) { ' . $block_selector . '{' . $custom_style->value . '} }';
-									}
-								}
-							}
-						}
-					}
+					$this->collect_section_styles( $page_styles, $styles, $fonts, '', '' );
 				}
 
 				// Enqueue Google Fonts.
