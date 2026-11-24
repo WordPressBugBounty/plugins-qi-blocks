@@ -4,7 +4,7 @@ Tags: gutenberg block, blocks, patterns, wireframes, gutenberg templates
 Requires at least: 6.3
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 1.5.4
+Stable tag: 1.5.5
 License: GPLv3
 License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
@@ -291,6 +291,12 @@ Feel free to try out some of our other products:
 12.	Device Frame Slider Block.
 
 == Changelog ==
+
+= 1.5.5 - 23-11-2026 =
+- Fixed Blog List REST and render queries accepting non-viewable post types (e.g. WooCommerce coupons) and uncapped posts_per_page
+- Hardened query params with post type / taxonomy viewability checks and orderby/order allow-lists
+- Fixed Swiper initialization forwarding arbitrary author-controlled data-* attributes into library options (stored XSS via pagination/navigation)
+- Restricted SVG uploads to users with unfiltered_html and sanitized SVG on both upload and sideload paths using filename-based detection
 
 = 1.5.4 - 22-10-2026 =
 - Fixed saved block styles (widgets, templates, posts) not printing on the front

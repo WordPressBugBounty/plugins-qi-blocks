@@ -5,7 +5,7 @@ Description: A collection of blocks for the Gutenberg block editor, developed by
 Author: Qode Interactive
 Author URI: https://qodeinteractive.com/
 Plugin URI: https://qodeinteractive.com/qi-blocks-for-gutenberg/
-Version: 1.5.4
+Version: 1.5.5
 Requires at least: 6.3
 Requires PHP: 7.4
 Text Domain: qi-blocks
@@ -39,9 +39,10 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 				// Add plugin's body classes.
 				add_filter( 'body_class', array( $this, 'add_body_classes' ) );
 
-				// Allow SVG MIME Type in Media Upload.
+				// Allow SVG MIME Type in Media Upload (trusted roles only) and sanitize every transport.
 				add_filter( 'upload_mimes', array( $this, 'allow_svg_media_files' ) );
 				add_filter( 'wp_handle_upload_prefilter', array( $this, 'handle_svg_wp_media_upload' ) );
+				add_filter( 'wp_handle_sideload_prefilter', array( $this, 'handle_svg_wp_media_upload' ) );
 				add_filter( 'wp_check_filetype_and_ext', array( $this, 'check_svg_upload' ), 10, 4 );
 
 				// Enqueue plugin's assets.
@@ -101,10 +102,40 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 		}
 
 		public function allow_svg_media_files( $mimes ) {
+			// Only trusted roles that can post unfiltered HTML may upload SVG.
+			if ( ! current_user_can( 'unfiltered_html' ) ) {
+				return $mimes;
+			}
+
 			$mimes['svg']  = 'image/svg+xml';
 			$mimes['svgz'] = 'image/svg+xml';
 
 			return $mimes;
+		}
+
+		/**
+		 * Whether an upload looks like an SVG based on filename/extension, not client Content-Type.
+		 *
+		 * @param array $file Upload file array.
+		 *
+		 * @return bool
+		 */
+		private function is_svg_upload( $file ) {
+			if ( empty( $file['name'] ) ) {
+				return false;
+			}
+
+			$filetype = wp_check_filetype( $file['name'] );
+			$ext      = isset( $filetype['ext'] ) ? strtolower( (string) $filetype['ext'] ) : '';
+
+			if ( in_array( $ext, array( 'svg', 'svgz' ), true ) ) {
+				return true;
+			}
+
+			// Fallback: extension from the raw filename when mime map is restricted.
+			$path_ext = strtolower( pathinfo( $file['name'], PATHINFO_EXTENSION ) );
+
+			return in_array( $path_ext, array( 'svg', 'svgz' ), true );
 		}
 
 		/*
@@ -120,29 +151,42 @@ if ( ! class_exists( 'Qi_Blocks' ) ) {
 		 */
 		public function handle_svg_wp_media_upload( $file ) {
 
-			if ( ! empty( $file ) && isset( $file['type'] ) && 'image/svg+xml' === $file['type'] ) {
-				// Load the svg file.
-				$get_svg_content = @file_get_contents( $file['tmp_name'] );
+			if ( empty( $file ) || ! $this->is_svg_upload( $file ) ) {
+				return $file;
+			}
 
-				if ( ! empty( $get_svg_content ) ) {
+			if ( ! current_user_can( 'unfiltered_html' ) ) {
+				$file['error'] = esc_html__( 'You are not allowed to upload SVG files.', 'qi-blocks' );
 
-					if ( class_exists( 'enshrined\svgSanitize\Sanitizer' ) ) {
-						// Create a new sanitizer instance.
-						$sanitizer = new enshrined\svgSanitize\Sanitizer();
+				return $file;
+			}
 
-						// Pass it to the sanitizer and get it back clean.
-						$clean_svg_content = $sanitizer->sanitize( $get_svg_content );
+			// Normalize declared type so downstream checks treat it as SVG.
+			$file['type'] = 'image/svg+xml';
 
-						if ( empty( $clean_svg_content ) ) {
-							$clean_svg_content = '';
-						}
+			// Load the svg file.
+			$get_svg_content = @file_get_contents( $file['tmp_name'] );
 
-						// Update clean SVG/XML data.
-						@file_put_contents( $file['tmp_name'], $clean_svg_content );
+			if ( ! empty( $get_svg_content ) ) {
+
+				if ( class_exists( 'enshrined\svgSanitize\Sanitizer' ) ) {
+					// Create a new sanitizer instance.
+					$sanitizer = new enshrined\svgSanitize\Sanitizer();
+
+					// Pass it to the sanitizer and get it back clean.
+					$clean_svg_content = $sanitizer->sanitize( $get_svg_content );
+
+					if ( empty( $clean_svg_content ) ) {
+						$file['error'] = esc_html__( 'Please upload a valid SVG file.', 'qi-blocks' );
+
+						return $file;
 					}
-				} else {
-					$file['error'] = esc_html__( 'Please upload a valid SVG file.', 'qi-blocks' );
+
+					// Update clean SVG/XML data.
+					@file_put_contents( $file['tmp_name'], $clean_svg_content );
 				}
+			} else {
+				$file['error'] = esc_html__( 'Please upload a valid SVG file.', 'qi-blocks' );
 			}
 
 			return $file;

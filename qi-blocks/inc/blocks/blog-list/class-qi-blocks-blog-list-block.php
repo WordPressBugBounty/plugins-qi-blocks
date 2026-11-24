@@ -2263,6 +2263,8 @@ if ( ! class_exists( 'Qi_Blocks_Blog_List_Block' ) ) {
 
 				$query_result = $wp_query;
 			} else {
+				// Blog List is posts-only; ignore any injected post_type attribute.
+				$attributes['post_type']             = 'post';
 				$attributes['additional_query_args'] = qi_blocks_get_additional_query_args( $attributes );
 
 				$query_result = new WP_Query( qi_blocks_get_query_params( $attributes ) );

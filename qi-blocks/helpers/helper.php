@@ -414,15 +414,35 @@ if ( ! function_exists( 'qi_blocks_get_query_params' ) ) {
 	 * @return array
 	 */
 	function qi_blocks_get_query_params( $atts ) {
-		$post_type      = isset( $atts['post_type'] ) && ! empty( $atts['post_type'] ) ? $atts['post_type'] : 'post';
-		$posts_per_page = isset( $atts['postsPerPage'] ) && ! empty( $atts['postsPerPage'] ) ? $atts['postsPerPage'] : 9;
+		$post_type = isset( $atts['post_type'] ) && ! empty( $atts['post_type'] ) ? sanitize_key( $atts['post_type'] ) : 'post';
+
+		// Reject non-public / non-viewable post types (e.g. WooCommerce shop_coupon).
+		if ( ! is_post_type_viewable( $post_type ) ) {
+			$post_type = 'post';
+		}
+
+		$posts_per_page = isset( $atts['postsPerPage'] ) && '' !== $atts['postsPerPage'] && null !== $atts['postsPerPage']
+			? absint( $atts['postsPerPage'] )
+			: 9;
+		$posts_per_page = max( 1, min( $posts_per_page, 100 ) );
+
+		$allowed_orderby = array( 'date', 'title', 'name', 'author', 'modified', 'menu_order', 'rand', 'ID', 'comment_count', 'relevance', 'post__in' );
+		$orderby         = isset( $atts['orderBy'] ) ? sanitize_key( $atts['orderBy'] ) : 'date';
+		if ( ! in_array( $orderby, $allowed_orderby, true ) ) {
+			$orderby = 'date';
+		}
+
+		$order = isset( $atts['order'] ) ? strtoupper( sanitize_key( $atts['order'] ) ) : 'DESC';
+		if ( ! in_array( $order, array( 'ASC', 'DESC' ), true ) ) {
+			$order = 'DESC';
+		}
 
 		$args = array(
 			'post_status'         => 'publish',
-			'post_type'           => esc_attr( $post_type ),
+			'post_type'           => $post_type,
 			'posts_per_page'      => $posts_per_page,
-			'orderby'             => esc_attr( $atts['orderBy'] ),
-			'order'               => esc_attr( $atts['order'] ),
+			'orderby'             => $orderby,
+			'order'               => $order,
 			'ignore_sticky_posts' => 1,
 		);
 
@@ -1629,14 +1649,16 @@ if ( ! function_exists( 'qi_blocks_get_additional_query_args' ) ) {
 				$taxonomy_values['terms'] = $slug;
 			}
 
-			if ( ! empty( $atts['tax'] ) && ! empty( $taxonomy_values ) ) {
+			$taxonomy = isset( $atts['tax'] ) ? sanitize_key( $atts['tax'] ) : '';
+
+			if ( ! empty( $taxonomy ) && is_taxonomy_viewable( $taxonomy ) && ! empty( $taxonomy_values ) ) {
 				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_tax_query
-				$args['tax_query'] = array( array_merge( array( 'taxonomy' => $atts['tax'] ), $taxonomy_values ) );
+				$args['tax_query'] = array( array_merge( array( 'taxonomy' => $taxonomy ), $taxonomy_values ) );
 			}
 		}
 
 		if ( ! empty( $atts['additionalParams'] ) && 'author' === $atts['additionalParams'] ) {
-			$args['author_name'] = $atts['authorSlug'];
+			$args['author_name'] = isset( $atts['authorSlug'] ) ? sanitize_title( $atts['authorSlug'] ) : '';
 		}
 
 		return $args;

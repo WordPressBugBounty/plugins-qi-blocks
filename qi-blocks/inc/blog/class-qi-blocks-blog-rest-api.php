@@ -40,7 +40,7 @@ class Qi_Blocks_Blog_Rest_API {
 				'queryAttributes' => array(
 					'required'          => true,
 					'validate_callback' => function ( $param ) {
-						return intval( $param );
+						return is_array( $param ) || is_object( $param );
 					},
 				),
 			),
@@ -57,9 +57,12 @@ class Qi_Blocks_Blog_Rest_API {
 		} else {
 			$response_data = json_decode( $response->get_body() );
 
-			if ( ! empty( $response_data ) ) {
+			if ( ! empty( $response_data ) && isset( $response_data->queryAttributes ) ) {
 				$atts                 = (array) $response_data->queryAttributes;
 				$inherit_global_query = isset( $atts['inheritGlobalQuery'] ) && ! empty( $atts['inheritGlobalQuery'] );
+
+				// Blog List is posts-only; ignore any client-supplied post_type.
+				$atts['post_type'] = 'post';
 
 				if ( $inherit_global_query ) {
 					$query_result = new WP_Query( array( 'post_type' => 'post' ) );
